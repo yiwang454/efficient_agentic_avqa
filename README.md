@@ -34,11 +34,14 @@ ffprobe -version
 Additional dependencies for each inference pipeline will be added with its
 source code. The experiments use o3 as the text-only planner and
 Gemini-2.5-Flash as the audio-visual perception
-model. Configure the provider credentials in a local `.env` file:
+model. The compact agent uses the official OpenAI API for o3 and the official
+Vertex AI Gemini `generateContent` API. Configure them in a local `.env` file:
 
 ```bash
-ELM_API_KEY=...
+OPENAI_API_KEY=...
+GEMINI_BASE_URL=https://aiplatform.googleapis.com/v1/projects/<project-id>/locations/<location>/publishers/google
 GEMINI_API_KEY=...
+GEMINI_MEDIA_MODE=inline
 ```
 
 Do not commit `.env` or other credential files.
@@ -67,6 +70,71 @@ marks the more efficient agentic system.
 
 ## Compact agent inference
 
-The compact-agent inference scripts for Daily-Omni, AVUT, and WorldSense will
-be linked here when they are added in the next release stage.
+The compact agent uses an o3 planner with medium reasoning effort and Gemini
+2.5 Flash for audio-visual perception. Its only tools are `ask_caption` and
+`ask_perception`. The first caption call is read from a question-scoped cache;
+later caption or perception calls use Gemini. Each question has a budget of six
+tool calls, followed by a forced final-answer step when needed.
+
+The input is a cut-level JSONL file. Each row must have an `id` and one
+supervision. The question is read from `supervisions[0].text` (or its
+`custom.question` fallback); answer choices, gold answer, and local
+`video_path` and `audio_path` values live under `supervisions[0].custom`.
+Media paths may differ from the paths used in our experiments.
+
+The caption cache directory must contain `manifest.json` and one
+`<question_id>.json` file for every input row. The runner validates the cache
+schema, question coverage, caption prompt, and content digest before inference.
+The cached caption prompt must match the released prompt exactly.
+
+Set credentials in `.env`:
+
+```bash
+OPENAI_API_KEY=...
+GEMINI_BASE_URL=https://aiplatform.googleapis.com/v1/projects/<project-id>/locations/<location>/publishers/google
+GEMINI_API_KEY=...
+GEMINI_MEDIA_MODE=inline
+```
+
+For Vertex authentication, `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
+may be used instead of `GEMINI_API_KEY`. Local media is embedded as native
+`inlineData` by default. To use Vertex `fileData`, set `GEMINI_MEDIA_MODE=gcs`
+and provide matching `GEMINI_LOCAL_DATA_ROOT` and `GEMINI_GCS_DATA_ROOT` values.
+
+For each benchmark, set its input, caption cache, and a writable output
+directory, then run the corresponding script. For example:
+
+```bash
+export INPUT_JSONL=/path/to/daily_omni_test.jsonl
+export CAPTION_CACHE_DIR=/path/to/daily_omni_caption_cache
+export OUTPUT_DIR=outputs/daily_omni
+bash scripts/11_run_dspy_react_agent_daily_o3_gemini25flash_basic_tools_free_react_6turn.sh
+```
+
+```bash
+export INPUT_JSONL=/path/to/avut_test.jsonl
+export CAPTION_CACHE_DIR=/path/to/avut_caption_cache
+export OUTPUT_DIR=outputs/avut
+bash scripts/11_run_dspy_react_agent_avut_o3_gemini25flash_basic_tools_free_react_6turn.sh
+```
+
+```bash
+export INPUT_JSONL=/path/to/worldsense_test.jsonl
+export CAPTION_CACHE_DIR=/path/to/worldsense_caption_cache
+export OUTPUT_DIR=outputs/worldsense
+bash scripts/11_run_dspy_react_agent_worldsense_o3_gemini25flash_basic_tools_free_react_6turn.sh
+```
+
+Each benchmark script checks the Table 1 test-set size before running: 1,197
+for Daily-Omni, 1,734 for AVUT, and 3,172 for WorldSense. Set
+`INFERENCE_NUM_THREADS` to control concurrent questions; it defaults to four.
+Existing per-question files in `OUTPUT_DIR` are used as resumable checkpoints.
+The aggregate result is written to `OUTPUT_DIR/output_test.jsonl`. The script
+returns a failure status if that file contains an error, empty response, or
+unparseable final answer; rerunning it retries failed checkpoints.
+
+To validate paths and print the resolved command without making model requests,
+prefix any command with `DRY_RUN=true`. To run selected questions from a full
+benchmark input, append `--sample-ids ID1 ID2` to the command. A dry run only
+checks configuration; it is not an inference result.
 

@@ -6,6 +6,7 @@ requires-python = ">=3.11,<3.12"
 dependencies = [
     "dspy==3.2.1",
     "gepa==0.0.27",
+    "google-auth>=2.0.0",
     "litellm==1.82.6",
     "openai==2.37.0",
     "requests==2.34.2",
@@ -16,8 +17,14 @@ dependencies = [
 requires = ["setuptools>=73", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = []
+[project.scripts]
+compact-avqa = "dspy_avqa.runner:run_batch"
+
+[tool.setuptools.packages.find]
+where = ["DSPy"]
+
+[tool.setuptools.package-data]
+dspy_avqa = ["yamls/*.yaml"]
 
 [tool.efficient_agentic_avqa]
 # System executables supplied by the FFmpeg installation, not pip packages.
