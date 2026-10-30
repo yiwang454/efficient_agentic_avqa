@@ -1,0 +1,24 @@
+[project]
+name = "efficient_agentic_avqa"
+version = "0.1.0"
+description = "Code for Efficient Agentic Audio-Visual Question Answering through Toolset Pruning and Modality Consolidation"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "dspy==3.2.1",
+    "gepa==0.0.27",
+    "litellm==1.82.6",
+    "openai==2.37.0",
+    "requests==2.34.2",
+    "PyYAML==6.0.3",
+]
+
+[build-system]
+requires = ["setuptools>=73", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = []
+
+[tool.efficient_agentic_avqa]
+# System executables supplied by the FFmpeg installation, not pip packages.
+required_executables = ["ffmpeg", "ffprobe"]
